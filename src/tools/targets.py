@@ -1,29 +1,36 @@
-"""Biological target search MCP tool."""
-
-from typing import Protocol
-
 from mcp import mcp
 from pydantic import BaseModel
+from typing import Protocol
 
 
 class Target(BaseModel):
+    """A biological target."""
+
     id: str
     name: str
     type: str
 
 
 class TargetRepository(Protocol):
-    def search(self, query: str, limit: int) -> list[Target]: ...
+    """Abstraction for the biological target retrieval service."""
+
+    def search_targets(self, query: str, limit: int = 10) -> list[Target]:
+        ...
 
 
+_repository: TargetRepository | None = None
+
+
+def configure_target_repository(repository: TargetRepository) -> None:
+    """Configure the biological target retrieval service."""
+    global _repository
+    _repository = repository
 
 
 @mcp.tool()
 def search_targets(query: str, limit: int = 10) -> list[Target]:
-    """Search biological targets by identifier, name, or target type."""
-    if not isinstance(query, str) or not query.strip():
-        raise ValueError("query must be a non-empty string")
-    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
-        raise ValueError("limit must be an integer between 1 and 100")
-    return _repository.search(query.strip(), limit)
+    """Search for biological targets based on a query."""
+    if _repository is None:
+        raise RuntimeError("Target repository has not been configured")
+    return _repository.search_targets(query, limit)
 

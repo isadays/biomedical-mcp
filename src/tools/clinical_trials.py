@@ -1,15 +1,11 @@
-"""Clinical-trial search MCP tool."""
-
-from __future__ import annotations
-
-from typing import Iterable, Protocol
-
 from mcp import mcp
-
 from pydantic import BaseModel
+from typing import Protocol
 
 
 class ClinicalTrial(BaseModel):
+    """A clinical trial."""
+
     id: str
     title: str
     status: str
@@ -20,17 +16,25 @@ class ClinicalTrial(BaseModel):
 
 
 class ClinicalTrialRepository(Protocol):
-    def search(self, query: str, limit: int) -> list[ClinicalTrial]: ...
+    """Abstraction for the clinical-trial retrieval service."""
+
+    def search_clinical_trials(self, query: str, limit: int = 10) -> list[ClinicalTrial]:
+        ...
 
 
+_repository: ClinicalTrialRepository | None = None
+
+
+def configure_clinical_trial_repository(repository: ClinicalTrialRepository) -> None:
+    """Configure the clinical-trial retrieval service."""
+    global _repository
+    _repository = repository
 
 
 @mcp.tool()
 def search_clinical_trials(query: str, limit: int = 10) -> list[ClinicalTrial]:
-    """Search clinical trials by title, status, phase, condition, or intervention."""
-    if not isinstance(query, str) or not query.strip():
-        raise ValueError("query must be a non-empty string")
-    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
-        raise ValueError("limit must be an integer between 1 and 100")
-    return _repository.search(query.strip(), limit)
+    """Search for clinical trials based on a query."""
+    if _repository is None:
+        raise RuntimeError("Clinical-trial repository has not been configured")
+    return _repository.search_clinical_trials(query, limit)
 

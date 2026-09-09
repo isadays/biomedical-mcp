@@ -1,10 +1,11 @@
-"""Compound search MCP tool."""
-
 from mcp import mcp
 from pydantic import BaseModel
+from typing import Protocol
 
 
 class Compound(BaseModel):
+    """A chemical compound."""
+
     id: str
     name: str
     formula: str
@@ -12,16 +13,25 @@ class Compound(BaseModel):
 
 
 class CompoundRepository(Protocol):
-    def search(self, query: str, limit: int) -> list[Compound]: ...
+    """Abstraction for the compound retrieval service."""
 
+    def search_compounds(self, query: str, limit: int = 10) -> list[Compound]:
+        ...
+
+
+_repository: CompoundRepository | None = None
+
+
+def configure_compound_repository(repository: CompoundRepository) -> None:
+    """Configure the compound retrieval service."""
+    global _repository
+    _repository = repository
 
 
 @mcp.tool()
 def search_compounds(query: str, limit: int = 10) -> list[Compound]:
-    """Search compounds by identifier, name, or molecular formula."""
-    if not isinstance(query, str) or not query.strip():
-        raise ValueError("query must be a non-empty string")
-    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
-        raise ValueError("limit must be an integer between 1 and 100")
-    return _repository.search(query.strip(), limit)
+    """Search for chemical compounds based on a query."""
+    if _repository is None:
+        raise RuntimeError("Compound repository has not been configured")
+    return _repository.search_compounds(query, limit)
 
